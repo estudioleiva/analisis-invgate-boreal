@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+openai
+pdfplumber
+pdf2image
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+pillow
+pdf2image
+python-dotenv

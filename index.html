@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auditoría Médica IA</title>
+</head>
+<body>
+
+<h2>Procesar carpeta de Drive</h2>
+
+<input type="text" id="folderId" placeholder="Pegá el ID de la carpeta">
+<button onclick="procesar()">Procesar</button>
+
+<p id="estado"></p>
+
+<script>
+async function procesar() {
+
+    const folderId = document.getElementById("folderId").value;
+
+    const response = await fetch("https://TU_API/procesar", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ folder_id: folderId })
+    });
+
+    const data = await response.json();
+    const jobId = data.job_id;
+
+    document.getElementById("estado").innerText = "Procesando...";
+
+    chequearEstado(jobId);
+}
+
+async function chequearEstado(jobId) {
+
+    const intervalo = setInterval(async () => {
+
+        const response = await fetch(`https://TU_API/estado/${jobId}`);
+        const data = await response.json();
+
+        if (data.status === "finalizado") {
+            clearInterval(intervalo);
+            document.getElementById("estado").innerText = "Finalizado ✔";
+        }
+
+    }, 5000);
+}
+</script>
+
+</body>
+</html>
