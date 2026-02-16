@@ -684,6 +684,7 @@ def procesar_drive_job(job_id: str, folder_id: str):
 # =========================================================
 # ENDPOINTS
 # =========================================================
+
 @app.post("/procesar")
 def iniciar_proceso(request: DriveRequest, background_tasks: BackgroundTasks):
     job_id = str(uuid.uuid4())
@@ -702,6 +703,11 @@ def consultar_estado(job_id: str):
     if job_id not in jobs:
         return {"error": "Job no encontrado"}
     return jobs[job_id]
+
+
+@app.get("/")
+def root():
+    return {"status": "running"}
 
 
 @app.get("/health")
