@@ -1,11 +1,43 @@
 import os
 import uuid
-import shutil
+import json
+import time
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
 from typing import Dict
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 app = FastAPI()
+
+# ==============================
+# CONFIG DRIVE
+# ==============================
+
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+
+def conectar_drive():
+    credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+
+    if not credentials_json:
+        raise Exception("No se encontró GOOGLE_CREDENTIALS_JSON en variables de entorno")
+
+    credentials_dict = json.loads(credentials_json)
+
+    creds = service_account.Credentials.from_service_account_info(
+        credentials_dict,
+        scopes=SCOPES
+    )
+
+    service = build('drive', 'v3', credentials=creds)
+    return service
+
+
+def listar_pdfs(service, folder_id):
+    query = f"'{folder_id}' in parents and mimeType='application/pdf'"
+    results = service.files().list(q=query).execute()
+    return results.get('files', [])
+
 
 # ==============================
 # MODELO REQUEST
@@ -14,14 +46,16 @@ app = FastAPI()
 class DriveRequest(BaseModel):
     folder_id: str
 
+
 # ==============================
 # STORAGE SIMPLE EN MEMORIA
 # ==============================
 
 jobs: Dict[str, dict] = {}
 
+
 # ==============================
-# FUNCION BACKGROUND
+# FUNCION BACKGROUND REAL
 # ==============================
 
 def procesar_drive_job(job_id: str, folder_id: str):
@@ -29,28 +63,20 @@ def procesar_drive_job(job_id: str, folder_id: str):
     jobs[job_id]["status"] = "procesando"
 
     try:
-        # Crear carpeta temporal del job
-        base_path = f"jobs/{job_id}"
-        os.makedirs(base_path, exist_ok=True)
+        service = conectar_drive()
 
-        # 🔹 ACÁ VAMOS A INTEGRAR:
-        # - Descargar PDFs
-        # - Procesar texto / vision
-        # - Generar resumen
+        archivos = listar_pdfs(service, folder_id)
 
-        # Simulación temporal
-        import time
-        time.sleep(5)
-
-        resumen = f"Procesado folder {folder_id}"
+        cantidad = len(archivos)
 
         jobs[job_id]["status"] = "finalizado"
-        jobs[job_id]["resumen"] = resumen
-        jobs[job_id]["documentos_procesados"] = 14
+        jobs[job_id]["resumen"] = f"Se encontraron {cantidad} PDFs"
+        jobs[job_id]["documentos_procesados"] = cantidad
 
     except Exception as e:
         jobs[job_id]["status"] = "error"
         jobs[job_id]["error"] = str(e)
+
 
 # ==============================
 # ENDPOINT INICIO
@@ -76,6 +102,7 @@ def iniciar_proceso(request: DriveRequest, background_tasks: BackgroundTasks):
         "status": "en_proceso",
         "job_id": job_id
     }
+
 
 # ==============================
 # ENDPOINT ESTADO
