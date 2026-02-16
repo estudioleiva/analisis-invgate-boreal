@@ -1,11 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
     <title>Auditoría Médica IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        input {
+            width: 400px;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        #estado {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-<h2>Procesar carpeta de Drive</h2>
+<h2>Procesar carpeta de Google Drive</h2>
 
 <input type="text" id="folderId" placeholder="Pegá el ID de la carpeta">
 <button onclick="procesar()">Procesar</button>
@@ -13,40 +32,74 @@
 <p id="estado"></p>
 
 <script>
+
+const API_BASE = "https://auditoriaiaiinvagate-production-f174.up.railway.app";
+
 async function procesar() {
 
     const folderId = document.getElementById("folderId").value;
 
-    const response = await fetch("https://TU_API/procesar", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ folder_id: folderId })
-    });
+    if (!folderId) {
+        alert("Debés ingresar un ID de carpeta");
+        return;
+    }
 
-    const data = await response.json();
-    const jobId = data.job_id;
+    document.getElementById("estado").innerText = "Iniciando proceso...";
 
-    document.getElementById("estado").innerText = "Procesando...";
+    try {
 
-    chequearEstado(jobId);
+        const response = await fetch(`${API_BASE}/procesar`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ folder_id: folderId })
+        });
+
+        const data = await response.json();
+
+        if (!data.job_id) {
+            document.getElementById("estado").innerText = "Error iniciando proceso";
+            return;
+        }
+
+        document.getElementById("estado").innerText = "Procesando...";
+        chequearEstado(data.job_id);
+
+    } catch (error) {
+        document.getElementById("estado").innerText = "Error de conexión con la API";
+        console.error(error);
+    }
 }
 
 async function chequearEstado(jobId) {
 
     const intervalo = setInterval(async () => {
 
-        const response = await fetch(`https://TU_API/estado/${jobId}`);
-        const data = await response.json();
+        try {
 
-        if (data.status === "finalizado") {
+            const response = await fetch(`${API_BASE}/estado/${jobId}`);
+            const data = await response.json();
+
+            if (data.status === "finalizado") {
+                clearInterval(intervalo);
+                document.getElementById("estado").innerText = "Finalizado ✔";
+            }
+
+            if (data.status === "error") {
+                clearInterval(intervalo);
+                document.getElementById("estado").innerText = "Error en el procesamiento";
+            }
+
+        } catch (error) {
             clearInterval(intervalo);
-            document.getElementById("estado").innerText = "Finalizado ✔";
+            document.getElementById("estado").innerText = "Error consultando estado";
+            console.error(error);
         }
 
     }, 5000);
 }
+
 </script>
 
 </body>
