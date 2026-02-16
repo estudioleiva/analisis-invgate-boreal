@@ -1,35 +1,99 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Auditoría Médica IA</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        input {
-            width: 400px;
-            padding: 8px;
-        }
-        button {
-            padding: 8px 16px;
-            cursor: pointer;
-        }
-        #estado {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Auditoría Médica IA</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    background-color: #f4f6f8;
+}
+
+.container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 700px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 15px;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    background-color: #2f5bea;
+    color: white;
+    font-weight: bold;
+}
+
+button:disabled {
+    background-color: #999;
+}
+
+#estado {
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+#detalle {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+}
+
+#resultados {
+    margin-top: 25px;
+    padding: 15px;
+    background: #eef3ff;
+    border-radius: 10px;
+    display: none;
+}
+
+.loader {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #777;
+}
+a {
+    display: block;
+    margin-top: 8px;
+}
+</style>
 </head>
+
 <body>
 
-<h2>Procesar carpeta de Google Drive</h2>
+<div class="container">
 
-<input type="text" id="folderId" placeholder="Pegá el ID de la carpeta">
-<button onclick="procesar()">Procesar</button>
+<h2>Auditoría Médica Automatizada</h2>
 
-<p id="estado"></p>
+<p>Pegá el ID de la carpeta de Google Drive:</p>
+
+<input type="text" id="folderId" placeholder="Ej: 1TFpu6HEzBK-G7vzUZxFZ2XpFplP_tbAu">
+<button id="btnProcesar" onclick="procesar()">Procesar</button>
+
+<div id="estado"></div>
+<div id="detalle"></div>
+<div class="loader" id="loader"></div>
+
+<div id="resultados">
+    <h3>Resultados</h3>
+    <div id="links"></div>
+</div>
+
+</div>
 
 <script>
 
@@ -37,22 +101,25 @@ const API_BASE = "https://auditoriaiaiinvagate-production-f174.up.railway.app";
 
 async function procesar() {
 
-    const folderId = document.getElementById("folderId").value;
+    const folderId = document.getElementById("folderId").value.trim();
+    const btn = document.getElementById("btnProcesar");
 
     if (!folderId) {
         alert("Debés ingresar un ID de carpeta");
         return;
     }
 
+    btn.disabled = true;
     document.getElementById("estado").innerText = "Iniciando proceso...";
+    document.getElementById("detalle").innerText = "";
+    document.getElementById("loader").innerText = "⏳ Preparando...";
+    document.getElementById("resultados").style.display = "none";
 
     try {
 
         const response = await fetch(`${API_BASE}/procesar`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder_id: folderId })
         });
 
@@ -60,15 +127,15 @@ async function procesar() {
 
         if (!data.job_id) {
             document.getElementById("estado").innerText = "Error iniciando proceso";
+            btn.disabled = false;
             return;
         }
 
-        document.getElementById("estado").innerText = "Procesando...";
         chequearEstado(data.job_id);
 
     } catch (error) {
         document.getElementById("estado").innerText = "Error de conexión con la API";
-        console.error(error);
+        btn.disabled = false;
     }
 }
 
@@ -81,23 +148,66 @@ async function chequearEstado(jobId) {
             const response = await fetch(`${API_BASE}/estado/${jobId}`);
             const data = await response.json();
 
+            document.getElementById("estado").innerText = "Estado: " + data.status;
+
+            if (data.status_detalle) {
+                document.getElementById("detalle").innerText = data.status_detalle;
+            }
+
             if (data.status === "finalizado") {
+
                 clearInterval(intervalo);
-                document.getElementById("estado").innerText = "Finalizado ✔";
+
+                document.getElementById("loader").innerText = "✔ Proceso completado";
+                document.getElementById("estado").innerText = "Finalizado correctamente";
+
+                if (data.outputs) {
+                    mostrarResultados(data.outputs);
+                }
+
+                document.getElementById("btnProcesar").disabled = false;
             }
 
             if (data.status === "error") {
+
                 clearInterval(intervalo);
+
+                document.getElementById("loader").innerText = "";
                 document.getElementById("estado").innerText = "Error en el procesamiento";
+                document.getElementById("detalle").innerText = data.error || "";
+
+                document.getElementById("btnProcesar").disabled = false;
             }
 
         } catch (error) {
+
             clearInterval(intervalo);
+
             document.getElementById("estado").innerText = "Error consultando estado";
-            console.error(error);
+            document.getElementById("btnProcesar").disabled = false;
         }
 
-    }, 5000);
+    }, 4000);
+}
+
+function mostrarResultados(outputs) {
+
+    const contenedor = document.getElementById("links");
+    contenedor.innerHTML = "";
+
+    if (outputs.pdf && outputs.pdf.url) {
+        contenedor.innerHTML += `<a href="${outputs.pdf.url}" target="_blank">📄 Descargar PDF</a>`;
+    }
+
+    if (outputs.html && outputs.html.url) {
+        contenedor.innerHTML += `<a href="${outputs.html.url}" target="_blank">🌐 Ver Informe HTML</a>`;
+    }
+
+    if (outputs.json && outputs.json.url) {
+        contenedor.innerHTML += `<a href="${outputs.json.url}" target="_blank">📦 Ver JSON estructurado</a>`;
+    }
+
+    document.getElementById("resultados").style.display = "block";
 }
 
 </script>
