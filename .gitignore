@@ -1,17 +1,23 @@
+# Python
 __pycache__/
 *.pyc
+
+# Entorno
 .env
+.venv/
 drive_credentials.json
 
-# Archivos grandes / datos
+# Archivos generados
+jobs/
+img/
+HURTAO*/
+
+# Binarios pesados
 *.pdf
 *.jpg
 *.jpeg
 *.png
-*.json
-HURTAO*/
-img/
-jobs/
 
-# Entorno
-.venv/
+# Archivos de salida locales
+resultado_legajo.json
+resumen_clinico.txt

@@ -8,5 +8,5 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 pillow
-pdf2image
 python-dotenv
+reportlab
