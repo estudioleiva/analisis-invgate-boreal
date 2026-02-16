@@ -1,10 +1,10 @@
 import os
 import uuid
 import json
-import time
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
 from typing import Dict
+
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -35,7 +35,12 @@ def conectar_drive():
 
 def listar_pdfs(service, folder_id):
     query = f"'{folder_id}' in parents and mimeType='application/pdf'"
-    results = service.files().list(q=query).execute()
+
+    results = service.files().list(
+        q=query,
+        fields="files(id, name)"
+    ).execute()
+
     return results.get('files', [])
 
 
@@ -48,14 +53,14 @@ class DriveRequest(BaseModel):
 
 
 # ==============================
-# STORAGE SIMPLE EN MEMORIA
+# STORAGE EN MEMORIA
 # ==============================
 
 jobs: Dict[str, dict] = {}
 
 
 # ==============================
-# FUNCION BACKGROUND REAL
+# FUNCION BACKGROUND
 # ==============================
 
 def procesar_drive_job(job_id: str, folder_id: str):
@@ -67,11 +72,10 @@ def procesar_drive_job(job_id: str, folder_id: str):
 
         archivos = listar_pdfs(service, folder_id)
 
-        cantidad = len(archivos)
-
         jobs[job_id]["status"] = "finalizado"
-        jobs[job_id]["resumen"] = f"Se encontraron {cantidad} PDFs"
-        jobs[job_id]["documentos_procesados"] = cantidad
+        jobs[job_id]["resumen"] = f"Procesado folder {folder_id}"
+        jobs[job_id]["documentos_procesados"] = len(archivos)
+        jobs[job_id]["archivos"] = [a["name"] for a in archivos]
 
     except Exception as e:
         jobs[job_id]["status"] = "error"
