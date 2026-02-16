@@ -680,7 +680,6 @@ def procesar_drive_job(job_id: str, folder_id: str):
         jobs[job_id]["error"] = str(e)
         jobs[job_id]["finished_at"] = datetime.now().isoformat()
 
-
 # =========================================================
 # ENDPOINTS
 # =========================================================
@@ -688,14 +687,19 @@ def procesar_drive_job(job_id: str, folder_id: str):
 @app.post("/procesar")
 def iniciar_proceso(request: DriveRequest, background_tasks: BackgroundTasks):
     job_id = str(uuid.uuid4())
+
     jobs[job_id] = {
         "status": "en_cola",
         "folder_id": request.folder_id,
+        "created_at": datetime.now().isoformat()
     }
 
     background_tasks.add_task(procesar_drive_job, job_id, request.folder_id)
 
-    return {"status": "en_proceso", "job_id": job_id}
+    return {
+        "status": "en_proceso",
+        "job_id": job_id
+    }
 
 
 @app.get("/estado/{job_id}")
@@ -707,9 +711,11 @@ def consultar_estado(job_id: str):
 
 @app.get("/")
 def root():
+    # Endpoint raíz requerido por Railway para healthcheck
     return {"status": "running"}
 
 
 @app.get("/health")
 def health():
+    # Endpoint explícito de salud para monitoreo externo
     return {"ok": True}
