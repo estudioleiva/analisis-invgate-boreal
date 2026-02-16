@@ -1,3 +1,17 @@
-drive_credentials.json
-.env
 __pycache__/
+*.pyc
+.env
+drive_credentials.json
+
+# Archivos grandes / datos
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.json
+HURTAO*/
+img/
+jobs/
+
+# Entorno
+.venv/
